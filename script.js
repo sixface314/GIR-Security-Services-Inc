@@ -428,4 +428,3 @@ patrolSelect.addEventListener('change', updateCheckpointList);
 generateReportButton.addEventListener('click', generateReport);
 document.getElementById('view-past-reports').addEventListener('click', viewPastReports);
 document.getElementById('view-all-reports').addEventListener('click', viewAllReports);
-
