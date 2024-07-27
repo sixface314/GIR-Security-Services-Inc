@@ -1,3 +1,4 @@
+/* Base styles for larger screens */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -156,4 +157,73 @@ input[type="text"], input[type="password"] {
 
 #auth-toggle a:hover {
     text-decoration: underline;
+}
+
+/* Media queries for responsive design */
+
+/* For screens smaller than 600px */
+@media screen and (max-width: 600px) {
+    .container {
+        width: 100%;
+        padding: 10px;
+    }
+
+    .logo-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .patrol-controls {
+        flex-direction: column;
+    }
+
+    .patrol-content {
+        flex-direction: column;
+    }
+
+    #patrol-map {
+        max-width: 100%;
+    }
+
+    table, th, td {
+        font-size: 14px;
+    }
+
+    button {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+
+/* For screens between 600px and 900px */
+@media screen and (min-width: 600px) and (max-width: 900px) {
+    .container {
+        width: 90%;
+    }
+
+    .logo-container {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .patrol-controls {
+        flex-direction: row;
+    }
+
+    .patrol-content {
+        flex-direction: row;
+    }
+
+    #patrol-map {
+        max-width: 100%;
+    }
+
+    table, th, td {
+        font-size: 16px;
+    }
+
+    button {
+        width: auto;
+        margin-bottom: 0;
+    }
 }
