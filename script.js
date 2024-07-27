@@ -1,6 +1,6 @@
 import { auth, database } from './firebase-config.js';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import { ref, push, set } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { ref, push, set, get } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 
 const authContainer = document.getElementById('auth-container');
 const patrolContainer = document.getElementById('patrol-container');
@@ -8,9 +8,10 @@ const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
 const authToggle = document.getElementById('auth-toggle');
 const toggleAuth = document.getElementById('toggle-auth');
-const loginUsername = document.getElementById('login-username');
+const loginEmail = document.getElementById('login-email');
 const loginPassword = document.getElementById('login-password');
-const registerUsername = document.getElementById('register-username');
+const registerName = document.getElementById('register-name');
+const registerEmail = document.getElementById('register-email');
 const registerPassword = document.getElementById('register-password');
 const userName = document.getElementById('user-name');
 const logoutButton = document.getElementById('logout-button');
@@ -26,6 +27,7 @@ const checkpointList = document.getElementById('checkpoint-list');
 const patrolMap = document.getElementById('patrol-map');
 
 let currentUser = null;
+let currentUserName = null;
 let patrolStartTime = null;
 
 const checkpoints = {
@@ -65,6 +67,7 @@ function init() {
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = user.email;
+            currentUserName = user.displayName;
             showPatrolContainer();
         } else {
             showAuthContainer();
@@ -80,7 +83,7 @@ function showAuthContainer() {
 function showPatrolContainer() {
     authContainer.style.display = 'none';
     patrolContainer.style.display = 'block';
-    userName.textContent = currentUser;
+    userName.textContent = currentUserName || currentUser;
     resetPatrolInfo();
 }
 
@@ -94,11 +97,22 @@ function resetPatrolInfo() {
 }
 
 function register() {
-    const username = registerUsername.value;
+    const name = registerName.value;
+    const email = registerEmail.value;
     const password = registerPassword.value;
     
-    createUserWithEmailAndPassword(auth, username, password)
+    createUserWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
+            return updateProfile(userCredential.user, {
+                displayName: name
+            }).then(() => {
+                return set(ref(database, 'users/' + userCredential.user.uid), {
+                    name: name,
+                    email: email
+                });
+            });
+        })
+        .then(() => {
             alert('Registration successful');
             toggleAuthForm();
         })
@@ -108,12 +122,13 @@ function register() {
 }
 
 function login() {
-    const username = loginUsername.value;
+    const email = loginEmail.value;
     const password = loginPassword.value;
     
-    signInWithEmailAndPassword(auth, username, password)
+    signInWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
             currentUser = userCredential.user.email;
+            currentUserName = userCredential.user.displayName;
             showPatrolContainer();
         })
         .catch((error) => {
@@ -124,6 +139,7 @@ function login() {
 function logout() {
     signOut(auth).then(() => {
         currentUser = null;
+        currentUserName = null;
         showAuthContainer();
     }).catch((error) => {
         console.error('Logout error:', error);
@@ -154,12 +170,12 @@ function endPatrol() {
     startPatrolButton.disabled = false;
     endPatrolButton.disabled = true;
     
-    // Save patrol data to Firebase
     const patrolData = {
         startTime: patrolStartTime.toISOString(),
         endTime: patrolEndTime.toISOString(),
         duration: patrolDuration,
         user: currentUser,
+        userName: currentUserName,
         patrolNumber: patrolSelect.value
     };
     push(ref(database, 'patrols'), patrolData);
@@ -192,11 +208,11 @@ function updateCheckpointList() {
             this.style.backgroundColor = 'green';
             this.disabled = true;
             
-            // Save checkpoint data to Firebase
             const checkpointData = {
                 checkpoint: checkpoint,
                 date: now.toISOString(),
                 user: currentUser,
+                userName: currentUserName,
                 patrolNumber: selectedPatrol
             };
             push(ref(database, 'checkpoints'), checkpointData);
@@ -204,7 +220,6 @@ function updateCheckpointList() {
         actionCell.appendChild(checkButton);
     });
 }
-
 function generateReport() {
     let reportContent = `
         <div class="logo-container" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
@@ -212,7 +227,7 @@ function generateReport() {
             <img src="casey_house_logo.png" alt="Casey House Logo" style="max-height: 50px;">
         </div>
         <h2>Patrol Report</h2>
-        <p>Employee: ${currentUser}</p>
+        <p>Employee: ${currentUserName || currentUser}</p>
         <p>Patrol: ${patrolTitle.textContent}</p>
         <p>Start Time: ${startTime.textContent}</p>
         <p>End Time: ${endTime.textContent}</p>
