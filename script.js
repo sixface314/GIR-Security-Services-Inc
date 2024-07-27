@@ -1,6 +1,6 @@
 import { auth, database } from './firebase-config.js';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import { ref, push, set, get } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+import { ref, push, set, get, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 
 const authContainer = document.getElementById('auth-container');
 const patrolContainer = document.getElementById('patrol-container');
@@ -29,6 +29,7 @@ const patrolMap = document.getElementById('patrol-map');
 let currentUser = null;
 let currentUserName = null;
 let patrolStartTime = null;
+let isAdmin = false;
 
 const checkpoints = {
     1: [
@@ -68,9 +69,21 @@ function init() {
         if (user) {
             currentUser = user.email;
             currentUserName = user.displayName;
+            checkIfAdmin(user.uid);
             showPatrolContainer();
         } else {
             showAuthContainer();
+        }
+    });
+}
+
+function checkIfAdmin(uid) {
+    get(ref(database, `users/${uid}`)).then((snapshot) => {
+        if (snapshot.exists()) {
+            isAdmin = snapshot.val().isAdmin || false;
+            if (isAdmin) {
+                document.getElementById('admin-panel').style.display = 'block';
+            }
         }
     });
 }
@@ -108,7 +121,8 @@ function register() {
             }).then(() => {
                 return set(ref(database, 'users/' + userCredential.user.uid), {
                     name: name,
-                    email: email
+                    email: email,
+                    isAdmin: false
                 });
             });
         })
@@ -176,9 +190,24 @@ function endPatrol() {
         duration: patrolDuration,
         user: currentUser,
         userName: currentUserName,
-        patrolNumber: patrolSelect.value
+        patrolNumber: patrolSelect.value,
+        checkpoints: getCheckpointData()
     };
     push(ref(database, 'patrols'), patrolData);
+}
+
+function getCheckpointData() {
+    const checkpointData = [];
+    const rows = checkpointList.getElementsByTagName('tr');
+    for (let row of rows) {
+        checkpointData.push({
+            checkpoint: row.cells[0].textContent,
+            date: row.cells[1].textContent,
+            time: row.cells[2].textContent,
+            result: row.cells[3].textContent
+        });
+    }
+    return checkpointData;
 }
 
 function updateCheckpointList() {
@@ -285,6 +314,106 @@ function generateReport() {
             </body>
         </html>
     `);
+
+    // Store the report in the database
+    const reportData = {
+        employee: currentUserName || currentUser,
+        patrol: patrolTitle.textContent,
+        startTime: startTime.textContent,
+        endTime: endTime.textContent,
+        duration: duration.textContent,
+        checkpoints: getCheckpointData(),
+        date: new Date().toISOString()
+    };
+    push(ref(database, 'reports'), reportData);
+}
+
+function viewPastReports() {
+    const reportsQuery = query(ref(database, 'reports'), orderByChild('employee'), equalTo(currentUserName || currentUser));
+    get(reportsQuery).then((snapshot) => {
+        if (snapshot.exists()) {
+            displayReports(snapshot.val());
+        } else {
+            alert('No past reports found.');
+        }
+    }).catch((error) => {
+        console.error('Error fetching reports:', error);
+    });
+}
+
+function viewAllReports() {
+    if (!isAdmin) {
+        alert('You do not have permission to view all reports.');
+        return;
+    }
+    get(ref(database, 'reports')).then((snapshot) => {
+        if (snapshot.exists()) {
+            displayReports(snapshot.val());
+        } else {
+            alert('No reports found.');
+        }
+    }).catch((error) => {
+        console.error('Error fetching reports:', error);
+    });
+}
+
+function displayReports(reports) {
+    let reportContent = '<h2>Past Reports</h2>';
+    for (let key in reports) {
+        const report = reports[key];
+        reportContent += `
+            <div class="report">
+                <h3>Report from ${new Date(report.date).toLocaleString()}</h3>
+                <p>Employee: ${report.employee}</p>
+                <p>Patrol: ${report.patrol}</p>
+                <p>Start Time: ${report.startTime}</p>
+                <p>End Time: ${report.endTime}</p>
+                <p>Duration: ${report.duration}</p>
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>Checkpoint</th>
+                            <th>Patrol Date</th>
+                            <th>Patrol Time</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        report.checkpoints.forEach(checkpoint => {
+            reportContent += `
+                <tr>
+                    <td>${checkpoint.checkpoint}</td>
+                    <td>${checkpoint.date}</td>
+                    <td>${checkpoint.time}</td>
+                    <td>${checkpoint.result}</td>
+                </tr>
+            `;
+        });
+        reportContent += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+    const reportWindow = window.open('', '_blank');
+    reportWindow.document.write(`
+        <html>
+            <head>
+                <title>Past Reports</title>
+                <style>
+                    body { font-family: Arial, sans-serif; }
+                    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+                    th, td { border: 1px solid black; padding: 8px; text-align: left; }
+                    .report { margin-bottom: 40px; border-bottom: 1px solid #ccc; padding-bottom: 20px; }
+                </style>
+            </head>
+            <body>
+                ${reportContent}
+                <button onclick="window.print()">Print Reports</button>
+            </body>
+        </html>
+    `);
 }
 
 init();
@@ -297,3 +426,5 @@ startPatrolButton.addEventListener('click', startPatrol);
 endPatrolButton.addEventListener('click', endPatrol);
 patrolSelect.addEventListener('change', updateCheckpointList);
 generateReportButton.addEventListener('click', generateReport);
+document.getElementById('view-past-reports').addEventListener('click', viewPastReports);
+document.getElementById('view-all-reports').addEventListener('click', viewAllReports);
