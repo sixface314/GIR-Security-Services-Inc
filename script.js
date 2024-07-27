@@ -1,6 +1,6 @@
 import { auth, database } from './firebase-config.js';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import { ref, push, set } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+import { ref, push, set, get } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 
 const authContainer = document.getElementById('auth-container');
 const patrolContainer = document.getElementById('patrol-container');
