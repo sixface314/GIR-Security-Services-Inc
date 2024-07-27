@@ -251,6 +251,17 @@ function updateCheckpointList() {
 }
 
 function generateReport() {
+const reportData = {
+        employee: currentUserName || currentUser,
+        patrol: patrolTitle.textContent,
+        startTime: startTime.textContent,
+        endTime: endTime.textContent,
+        duration: duration.textContent,
+        checkpoints: getCheckpointData(),
+        date: new Date().toISOString()
+    };
+    push(ref(database, 'reports'), reportData);
+}
     let reportContent = `
         <div class="logo-container" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
             <img src="gir_security_logo.png" alt="GIR Security Services Inc. Logo" style="max-height: 50px;">
