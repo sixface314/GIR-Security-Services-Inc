@@ -1,3 +1,7 @@
+import { auth, database } from './firebase-config.js';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { ref, push, set } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+
 const authContainer = document.getElementById('auth-container');
 const patrolContainer = document.getElementById('patrol-container');
 const loginForm = document.getElementById('login-form');
@@ -58,12 +62,14 @@ const patrolMaps = {
 };
 
 function init() {
-    currentUser = localStorage.getItem('currentUser');
-    if (currentUser) {
-        showPatrolContainer();
-    } else {
-        showAuthContainer();
-    }
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user.email;
+            showPatrolContainer();
+        } else {
+            showAuthContainer();
+        }
+    });
 }
 
 function showAuthContainer() {
@@ -90,34 +96,38 @@ function resetPatrolInfo() {
 function register() {
     const username = registerUsername.value;
     const password = registerPassword.value;
-    const users = JSON.parse(localStorage.getItem('users')) || {};
-    if (users[username]) {
-        alert('Username already exists');
-    } else {
-        users[username] = password;
-        localStorage.setItem('users', JSON.stringify(users));
-        alert('Registration successful');
-        toggleAuthForm();
-    }
+    
+    createUserWithEmailAndPassword(auth, username, password)
+        .then((userCredential) => {
+            alert('Registration successful');
+            toggleAuthForm();
+        })
+        .catch((error) => {
+            alert('Registration error: ' + error.message);
+        });
 }
 
 function login() {
     const username = loginUsername.value;
     const password = loginPassword.value;
-    const users = JSON.parse(localStorage.getItem('users')) || {};
-    if (users[username] === password) {
-        currentUser = username;
-        localStorage.setItem('currentUser', currentUser);
-        showPatrolContainer();
-    } else {
-        alert('Invalid username or password');
-    }
+    
+    signInWithEmailAndPassword(auth, username, password)
+        .then((userCredential) => {
+            currentUser = userCredential.user.email;
+            showPatrolContainer();
+        })
+        .catch((error) => {
+            alert('Login error: ' + error.message);
+        });
 }
 
 function logout() {
-    currentUser = null;
-    localStorage.removeItem('currentUser');
-    showAuthContainer();
+    signOut(auth).then(() => {
+        currentUser = null;
+        showAuthContainer();
+    }).catch((error) => {
+        console.error('Logout error:', error);
+    });
 }
 
 function toggleAuthForm() {
@@ -143,6 +153,16 @@ function endPatrol() {
     duration.textContent = `${patrolDuration.toFixed(2)} minutes`;
     startPatrolButton.disabled = false;
     endPatrolButton.disabled = true;
+    
+    // Save patrol data to Firebase
+    const patrolData = {
+        startTime: patrolStartTime.toISOString(),
+        endTime: patrolEndTime.toISOString(),
+        duration: patrolDuration,
+        user: currentUser,
+        patrolNumber: patrolSelect.value
+    };
+    push(ref(database, 'patrols'), patrolData);
 }
 
 function updateCheckpointList() {
@@ -171,6 +191,15 @@ function updateCheckpointList() {
             resultCell.textContent = 'Checked';
             this.style.backgroundColor = 'green';
             this.disabled = true;
+            
+            // Save checkpoint data to Firebase
+            const checkpointData = {
+                checkpoint: checkpoint,
+                date: now.toISOString(),
+                user: currentUser,
+                patrolNumber: selectedPatrol
+            };
+            push(ref(database, 'checkpoints'), checkpointData);
         };
         actionCell.appendChild(checkButton);
     });
