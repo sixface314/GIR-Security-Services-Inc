@@ -1,0 +1,159 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f0f0;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.logo-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f8f8f8;
+}
+
+.company-logo, .client-logo {
+    max-height: 60px;
+    width: auto;
+    transition: transform 0.3s ease;
+}
+
+.company-logo:hover, .client-logo:hover {
+    transform: scale(1.1);
+}
+
+h1, h2 {
+    text-align: center;
+    color: #333;
+}
+
+#user-info {
+    margin-bottom: 20px;
+}
+
+.patrol-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+#patrol-select {
+    flex-grow: 1;
+    margin-right: 10px;
+    padding: 5px;
+}
+
+button {
+    padding: 5px 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.patrol-details {
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.patrol-content {
+    display: flex;
+    gap: 20px;
+}
+
+.map-container {
+    flex: 1;
+    max-width: 50%;
+}
+
+#patrol-map {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+.checkpoint-container {
+    flex: 1;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+th {
+    background-color: #f2f2f2;
+}
+
+.export-options {
+    margin-top: 20px;
+    text-align: right;
+}
+
+#logout-button {
+    background-color: #f44336;
+    float: right;
+}
+
+#logout-button:hover {
+    background-color: #da190b;
+}
+
+#auth-container {
+    max-width: 300px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+#login-form, #register-form {
+    display: flex;
+    flex-direction: column;
+}
+
+input[type="text"], input[type="password"] {
+    margin-bottom: 10px;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+#auth-toggle {
+    text-align: center;
+    margin-top: 10px;
+}
+
+#auth-toggle a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+#auth-toggle a:hover {
+    text-decoration: underline;
+}

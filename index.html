@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIR Security Services Inc. - Patrol Log</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <div class="logo-container">
+            <img src="gir_security_logo.png" alt="GIR Security Services Inc. Logo" class="company-logo">
+            <img src="casey_house_logo.png" alt="Casey House Logo" class="client-logo">
+        </div>
+        <div id="auth-container">
+            <h2>GIR Security Services Inc.</h2>
+            <div id="login-form">
+                <input type="text" id="login-username" placeholder="Username" required>
+                <input type="password" id="login-password" placeholder="Password" required>
+                <button id="login-button">Login</button>
+            </div>
+            <div id="register-form" style="display:none;">
+                <input type="text" id="register-username" placeholder="Username" required>
+                <input type="password" id="register-password" placeholder="Password" required>
+                <button id="register-button">Register</button>
+            </div>
+            <p id="auth-toggle">Don't have an account? <a href="#" id="toggle-auth">Register</a></p>
+        </div>
+        <div id="patrol-container" style="display:none;">
+            <h2>Welcome, <span id="user-name"></span></h2>
+            <button id="logout-button">Logout</button>
+            <div id="patrol-controls">
+                <select id="patrol-select">
+                    <option value="1">Patrol #1</option>
+                    <option value="2">Patrol #2</option>
+                    <option value="3">Patrol #3</option>
+                </select>
+                <button id="start-patrol">Start Patrol</button>
+                <button id="end-patrol" disabled>End Patrol</button>
+                <button id="generate-report">Generate Report</button>
+            </div>
+            <div id="patrol-info">
+                <h3 id="patrol-title"></h3>
+                <p>Start Time: <span id="start-time">-</span></p>
+                <p>End Time: <span id="end-time">-</span></p>
+                <p>Duration: <span id="duration">-</span></p>
+            </div>
+            <div id="patrol-map-container">
+                <img id="patrol-map" src="" alt="Patrol Map">
+            </div>
+            <table id="checkpoint-table">
+                <thead>
+                    <tr>
+                        <th>Checkpoint</th>
+                        <th>Patrol Date</th>
+                        <th>Patrol Time</th>
+                        <th>Result</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="checkpoint-list"></tbody>
+            </table>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIR Security Services Inc. - Patrol Log</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="logo-container">
+            <img src="gir_security_logo.png" alt="GIR Security Services Inc. Logo" class="company-logo">
+            <img src="casey_house_logo.png" alt="Casey House Logo" class="client-logo">
+        </div>
+        <h1>Patrol Log</h1>
+        <div id="user-info">
+            <p>Employee: <span id="employee-name"></span></p>
+            <p>Login Date & Time: <span id="login-datetime"></span></p>
+            <p>Current Date & Time: <span id="current-datetime"></span></p>
+        </div>
+        <div class="patrol-controls">
+            <select id="patrol-select">
+                <option value="">Select Patrol</option>
+                <option value="1">Patrol #1</option>
+                <option value="2">Patrol #2</option>
+                <option value="3">Patrol #3</option>
+            </select>
+            <button id="start-patrol">Start Patrol</button>
+            <button id="end-patrol" disabled>End Patrol</button>
+        </div>
+        <div id="patrol-info">
+            <h2 id="patrol-title"></h2>
+            <div class="patrol-details">
+                <p>Route: <span id="patrol-route"></span></p>
+                <p>Start: <span id="patrol-start"></span></p>
+                <p>End: <span id="patrol-end"></span></p>
+                <p>Duration: <span id="patrol-duration"></span></p>
+            </div>
+            <div class="patrol-content">
+                <div class="map-container">
+                    <img id="patrol-map" src="" alt="Patrol Map">
+                </div>
+                <div class="checkpoint-container">
+                    <table id="checkpoint-table">
+                        <thead>
+                            <tr>
+                                <th>Checkpoint</th>
+                                <th>Patrol Date</th>
+                                <th>Patrol Time</th>
+                                <th>Result</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="checkpoint-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="export-options">
+            <button id="generate-report">Generate Report</button>
+            <button id="print-report">Print Report</button>
+            <button id="export-pdf">Export as PDF</button>
+        </div>
+        <button id="logout-button">Logout</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
