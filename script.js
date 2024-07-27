@@ -328,6 +328,8 @@ function generateReport() {
     push(ref(database, 'reports'), reportData);
 }
 
+// ... (previous code remains the same)
+
 function viewPastReports() {
     const reportsQuery = query(ref(database, 'reports'), orderByChild('employee'), equalTo(currentUserName || currentUser));
     get(reportsQuery).then((snapshot) => {
