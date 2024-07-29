@@ -251,17 +251,6 @@ function updateCheckpointList() {
 }
 
 function generateReport() {
-const reportData = {
-        employee: currentUserName || currentUser,
-        patrol: patrolTitle.textContent,
-        startTime: startTime.textContent,
-        endTime: endTime.textContent,
-        duration: duration.textContent,
-        checkpoints: getCheckpointData(),
-        date: new Date().toISOString()
-    };
-    push(ref(database, 'reports'), reportData);
-}
     let reportContent = `
         <div class="logo-container" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
             <img src="gir_security_logo.png" alt="GIR Security Services Inc. Logo" style="max-height: 50px;">
@@ -426,25 +415,6 @@ function displayReports(reports) {
         </html>
     `);
 }
-    const reportWindow = window.open('', '_blank');
-    reportWindow.document.write(`
-        <html>
-            <head>
-                <title>Past Reports</title>
-                <style>
-                    body { font-family: Arial, sans-serif; }
-                    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-                    th, td { border: 1px solid black; padding: 8px; text-align: left; }
-                    .report { margin-bottom: 40px; border-bottom: 1px solid #ccc; padding-bottom: 20px; }
-                </style>
-            </head>
-            <body>
-                ${reportContent}
-                <button onclick="window.print()">Print Reports</button>
-            </body>
-        </html>
-    `);
-}
 
 init();
 
@@ -458,4 +428,3 @@ patrolSelect.addEventListener('change', updateCheckpointList);
 generateReportButton.addEventListener('click', generateReport);
 document.getElementById('view-past-reports').addEventListener('click', viewPastReports);
 document.getElementById('view-all-reports').addEventListener('click', viewAllReports);
-document.getElementById('view-past-reports').addEventListener('click', viewPastReports);
