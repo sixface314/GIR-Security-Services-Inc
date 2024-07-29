@@ -1,17 +1,12 @@
-import { auth, database } from './firebase-config.js';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import { ref, push, set, get, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
-
 const authContainer = document.getElementById('auth-container');
 const patrolContainer = document.getElementById('patrol-container');
 const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
 const authToggle = document.getElementById('auth-toggle');
 const toggleAuth = document.getElementById('toggle-auth');
-const loginEmail = document.getElementById('login-email');
+const loginUsername = document.getElementById('login-username');
 const loginPassword = document.getElementById('login-password');
-const registerName = document.getElementById('register-name');
-const registerEmail = document.getElementById('register-email');
+const registerUsername = document.getElementById('register-username');
 const registerPassword = document.getElementById('register-password');
 const userName = document.getElementById('user-name');
 const logoutButton = document.getElementById('logout-button');
@@ -27,9 +22,7 @@ const checkpointList = document.getElementById('checkpoint-list');
 const patrolMap = document.getElementById('patrol-map');
 
 let currentUser = null;
-let currentUserName = null;
 let patrolStartTime = null;
-let isAdmin = false;
 
 const checkpoints = {
     1: [
@@ -46,7 +39,7 @@ const checkpoints = {
         "AC. Kitchen dish wash area", "AD. Oxygen room"
     ],
     2: [
-        "A. 2nd Floor Washroom 247", "B. 2nd Level Handicap Washroom 209", "C. 2nd Level Handicap Washroom 211",
+        "A. 2nd Floor Washroom 248", "B. 2nd Level Handicap Washroom 209", "C. 2nd Level Handicap Washroom 211",
         "D. 2nd Level North Corridor Washroom 204", "E. Handicap Washroom 135", "F. Washroom 134",
         "G. 102B washroom - behind reception", "H. 106 Washroom - interior", "I. 133 washroom interior",
         "J. 235 Washroom interior"
@@ -65,27 +58,12 @@ const patrolMaps = {
 };
 
 function init() {
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            currentUser = user.email;
-            currentUserName = user.displayName;
-            checkIfAdmin(user.uid);
-            showPatrolContainer();
-        } else {
-            showAuthContainer();
-        }
-    });
-}
-
-function checkIfAdmin(uid) {
-    get(ref(database, `users/${uid}`)).then((snapshot) => {
-        if (snapshot.exists()) {
-            isAdmin = snapshot.val().isAdmin || false;
-            if (isAdmin) {
-                document.getElementById('admin-panel').style.display = 'block';
-            }
-        }
-    });
+    currentUser = localStorage.getItem('currentUser');
+    if (currentUser) {
+        showPatrolContainer();
+    } else {
+        showAuthContainer();
+    }
 }
 
 function showAuthContainer() {
@@ -96,7 +74,7 @@ function showAuthContainer() {
 function showPatrolContainer() {
     authContainer.style.display = 'none';
     patrolContainer.style.display = 'block';
-    userName.textContent = currentUserName || currentUser;
+    userName.textContent = currentUser;
     resetPatrolInfo();
 }
 
@@ -110,54 +88,36 @@ function resetPatrolInfo() {
 }
 
 function register() {
-    const name = registerName.value;
-    const email = registerEmail.value;
+    const username = registerUsername.value;
     const password = registerPassword.value;
-    
-    createUserWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            return updateProfile(userCredential.user, {
-                displayName: name
-            }).then(() => {
-                return set(ref(database, 'users/' + userCredential.user.uid), {
-                    name: name,
-                    email: email,
-                    isAdmin: false
-                });
-            });
-        })
-        .then(() => {
-            alert('Registration successful');
-            toggleAuthForm();
-        })
-        .catch((error) => {
-            alert('Registration error: ' + error.message);
-        });
+    const users = JSON.parse(localStorage.getItem('users')) || {};
+    if (users[username]) {
+        alert('Username already exists');
+    } else {
+        users[username] = password;
+        localStorage.setItem('users', JSON.stringify(users));
+        alert('Registration successful');
+        toggleAuthForm();
+    }
 }
 
 function login() {
-    const email = loginEmail.value;
+    const username = loginUsername.value;
     const password = loginPassword.value;
-    
-    signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            currentUser = userCredential.user.email;
-            currentUserName = userCredential.user.displayName;
-            showPatrolContainer();
-        })
-        .catch((error) => {
-            alert('Login error: ' + error.message);
-        });
+    const users = JSON.parse(localStorage.getItem('users')) || {};
+    if (users[username] === password) {
+        currentUser = username;
+        localStorage.setItem('currentUser', currentUser);
+        showPatrolContainer();
+    } else {
+        alert('Invalid username or password');
+    }
 }
 
 function logout() {
-    signOut(auth).then(() => {
-        currentUser = null;
-        currentUserName = null;
-        showAuthContainer();
-    }).catch((error) => {
-        console.error('Logout error:', error);
-    });
+    currentUser = null;
+    localStorage.removeItem('currentUser');
+    showAuthContainer();
 }
 
 function toggleAuthForm() {
@@ -183,31 +143,6 @@ function endPatrol() {
     duration.textContent = `${patrolDuration.toFixed(2)} minutes`;
     startPatrolButton.disabled = false;
     endPatrolButton.disabled = true;
-    
-    const patrolData = {
-        startTime: patrolStartTime.toISOString(),
-        endTime: patrolEndTime.toISOString(),
-        duration: patrolDuration,
-        user: currentUser,
-        userName: currentUserName,
-        patrolNumber: patrolSelect.value,
-        checkpoints: getCheckpointData()
-    };
-    push(ref(database, 'patrols'), patrolData);
-}
-
-function getCheckpointData() {
-    const checkpointData = [];
-    const rows = checkpointList.getElementsByTagName('tr');
-    for (let row of rows) {
-        checkpointData.push({
-            checkpoint: row.cells[0].textContent,
-            date: row.cells[1].textContent,
-            time: row.cells[2].textContent,
-            result: row.cells[3].textContent
-        });
-    }
-    return checkpointData;
 }
 
 function updateCheckpointList() {
@@ -236,15 +171,6 @@ function updateCheckpointList() {
             resultCell.textContent = 'Checked';
             this.style.backgroundColor = 'green';
             this.disabled = true;
-            
-            const checkpointData = {
-                checkpoint: checkpoint,
-                date: now.toISOString(),
-                user: currentUser,
-                userName: currentUserName,
-                patrolNumber: selectedPatrol
-            };
-            push(ref(database, 'checkpoints'), checkpointData);
         };
         actionCell.appendChild(checkButton);
     });
@@ -257,7 +183,7 @@ function generateReport() {
             <img src="casey_house_logo.png" alt="Casey House Logo" style="max-height: 50px;">
         </div>
         <h2>Patrol Report</h2>
-        <p>Employee: ${currentUserName || currentUser}</p>
+        <p>Employee: ${currentUser}</p>
         <p>Patrol: ${patrolTitle.textContent}</p>
         <p>Start Time: ${startTime.textContent}</p>
         <p>End Time: ${endTime.textContent}</p>
@@ -314,106 +240,6 @@ function generateReport() {
             </body>
         </html>
     `);
-
-    // Store the report in the database
-    const reportData = {
-        employee: currentUserName || currentUser,
-        patrol: patrolTitle.textContent,
-        startTime: startTime.textContent,
-        endTime: endTime.textContent,
-        duration: duration.textContent,
-        checkpoints: getCheckpointData(),
-        date: new Date().toISOString()
-    };
-    push(ref(database, 'reports'), reportData);
-}
-
-function viewPastReports() {
-    const reportsQuery = query(ref(database, 'reports'), orderByChild('employee'), equalTo(currentUserName || currentUser));
-    get(reportsQuery).then((snapshot) => {
-        if (snapshot.exists()) {
-            displayReports(snapshot.val());
-        } else {
-            alert('No past reports found.');
-        }
-    }).catch((error) => {
-        console.error('Error fetching reports:', error);
-    });
-}
-
-function viewAllReports() {
-    if (!isAdmin) {
-        alert('You do not have permission to view all reports.');
-        return;
-    }
-    get(ref(database, 'reports')).then((snapshot) => {
-        if (snapshot.exists()) {
-            displayReports(snapshot.val());
-        } else {
-            alert('No reports found.');
-        }
-    }).catch((error) => {
-        console.error('Error fetching reports:', error);
-    });
-}
-
-function displayReports(reports) {
-    let reportContent = '<h2>Past Reports</h2>';
-    for (let key in reports) {
-        const report = reports[key];
-        reportContent += `
-            <div class="report">
-                <h3>Report from ${new Date(report.date).toLocaleString()}</h3>
-                <p>Employee: ${report.employee}</p>
-                <p>Patrol: ${report.patrol}</p>
-                <p>Start Time: ${report.startTime}</p>
-                <p>End Time: ${report.endTime}</p>
-                <p>Duration: ${report.duration}</p>
-                <table border="1">
-                    <thead>
-                        <tr>
-                            <th>Checkpoint</th>
-                            <th>Patrol Date</th>
-                            <th>Patrol Time</th>
-                            <th>Result</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-        report.checkpoints.forEach(checkpoint => {
-            reportContent += `
-                <tr>
-                    <td>${checkpoint.checkpoint}</td>
-                    <td>${checkpoint.date}</td>
-                    <td>${checkpoint.time}</td>
-                    <td>${checkpoint.result}</td>
-                </tr>
-            `;
-        });
-        reportContent += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-    }
-    const reportWindow = window.open('', '_blank');
-    reportWindow.document.write(`
-        <html>
-            <head>
-                <title>Past Reports</title>
-                <style>
-                    body { font-family: Arial, sans-serif; }
-                    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-                    th, td { border: 1px solid black; padding: 8px; text-align: left; }
-                    .report { margin-bottom: 40px; border-bottom: 1px solid #ccc; padding-bottom: 20px; }
-                </style>
-            </head>
-            <body>
-                ${reportContent}
-                <button onclick="window.print()">Print Reports</button>
-            </body>
-        </html>
-    `);
 }
 
 init();
@@ -426,5 +252,3 @@ startPatrolButton.addEventListener('click', startPatrol);
 endPatrolButton.addEventListener('click', endPatrol);
 patrolSelect.addEventListener('change', updateCheckpointList);
 generateReportButton.addEventListener('click', generateReport);
-document.getElementById('view-past-reports').addEventListener('click', viewPastReports);
-document.getElementById('view-all-reports').addEventListener('click', viewAllReports);
