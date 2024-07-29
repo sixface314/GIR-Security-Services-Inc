@@ -46,7 +46,7 @@ const checkpoints = {
         "AC. Kitchen dish wash area", "AD. Oxygen room"
     ],
     2: [
-        "A. 2nd Floor Washroom 247", "B. 2nd Level Handicap Washroom 209", "C. 2nd Level Handicap Washroom 211",
+        "A. 2nd Floor Washroom 248", "B. 2nd Level Handicap Washroom 209", "C. 2nd Level Handicap Washroom 211",
         "D. 2nd Level North Corridor Washroom 204", "E. Handicap Washroom 135", "F. Washroom 134",
         "G. 102B washroom - behind reception", "H. 106 Washroom - interior", "I. 133 washroom interior",
         "J. 235 Washroom interior"
