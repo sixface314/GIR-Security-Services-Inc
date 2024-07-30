@@ -28,6 +28,7 @@ const patrolSelect = document.getElementById('patrol-select');
 const startPatrolButton = document.getElementById('start-patrol');
 const endPatrolButton = document.getElementById('end-patrol');
 const generateReportButton = document.getElementById('generate-report');
+const viewPastReportsButton = document.getElementById('view-past-reports');
 const patrolTitle = document.getElementById('patrol-title');
 const startTime = document.getElementById('start-time');
 const endTime = document.getElementById('end-time');
@@ -122,7 +123,7 @@ function register() {
     const name = registerName.value;
     const email = registerEmail.value;
     const password = registerPassword.value;
-    
+
     createUserWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
             return updateProfile(userCredential.user, {
@@ -147,7 +148,7 @@ function register() {
 function login() {
     const email = loginEmail.value;
     const password = loginPassword.value;
-    
+
     signInWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
             currentUser = userCredential.user.email;
@@ -192,7 +193,7 @@ function endPatrol() {
     duration.textContent = `${patrolDuration.toFixed(2)} minutes`;
     startPatrolButton.disabled = false;
     endPatrolButton.disabled = true;
-    
+
     const patrolData = {
         startTime: patrolStartTime.toISOString(),
         endTime: patrolEndTime.toISOString(),
@@ -257,52 +258,6 @@ function updateCheckpointList() {
     });
 }
 
-function generateReport() {
-    if (!gapiInited || !gisInited) {
-        alert('Google API not initialized. Please try again in a moment.');
-        return;
-    }
-
-    tokenClient.callback = async (resp) => {
-        if (resp.error !== undefined) {
-            throw (resp);
-        }
-        await uploadReport();
-    };
-
-    if (gapi.client.getToken() === null) {
-        tokenClient.requestAccessToken({prompt: 'consent'});
-    } else {
-        tokenClient.requestAccessToken({prompt: ''});
-    }
-}
-
-async function uploadReport() {
-    let reportContent = generateReportContent();
-    try {
-        const file = new Blob([reportContent], {type: 'text/html'});
-        const metadata = {
-            'name': `Patrol_Report_${new Date().toISOString()}.html`,
-            'mimeType': 'text/html',
-        };
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-        form.append('file', file);
-
-        let response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-            method: 'POST',
-            headers: new Headers({'Authorization': 'Bearer ' + gapi.client.getToken().access_token}),
-            body: form,
-        });
-        let result = await response.json();
-        console.log('File uploaded successfully:', result);
-        alert('Report uploaded successfully to Google Drive');
-    } catch (err) {
-        console.error('Error uploading file:', err);
-        alert('Failed to upload report');
-    }
-}
-
 function generateReportContent() {
     let reportContent = `
         <html>
@@ -355,6 +310,62 @@ function generateReportContent() {
     `;
 
     return reportContent;
+}
+
+function printReport() {
+    const reportContent = generateReportContent();
+    const newWindow = window.open('', '_blank');
+    newWindow.document.write(reportContent);
+    newWindow.document.close();
+    newWindow.print();
+}
+
+function generateReport() {
+    if (!gapiInited || !gisInited) {
+        alert('Google API not initialized. Please try again in a moment.');
+        return;
+    }
+
+    printReport();
+
+    tokenClient.callback = async (resp) => {
+        if (resp.error !== undefined) {
+            throw (resp);
+        }
+        await uploadReport();
+    };
+
+    if (gapi.client.getToken() === null) {
+        tokenClient.requestAccessToken({prompt: 'consent'});
+    } else {
+        tokenClient.requestAccessToken({prompt: ''});
+    }
+}
+
+async function uploadReport() {
+    let reportContent = generateReportContent();
+    try {
+        const file = new Blob([reportContent], {type: 'text/html'});
+        const metadata = {
+            'name': `Patrol_Report_${new Date().toISOString()}.html`,
+            'mimeType': 'text/html',
+        };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+        form.append('file', file);
+
+        let response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: new Headers({'Authorization': 'Bearer ' + gapi.client.getToken().access_token}),
+            body: form,
+        });
+        let result = await response.json();
+        console.log('File uploaded successfully:', result);
+        alert('Report uploaded successfully to Google Drive');
+    } catch (err) {
+        console.error('Error uploading file:', err);
+        alert('Failed to upload report');
+    }
 }
 
 async function viewPastReports() {
@@ -413,7 +424,7 @@ function gisLoaded() {
 function maybeEnableButtons() {
     if (gapiInited && gisInited) {
         generateReportButton.disabled = false;
-        document.getElementById('view-past-reports').disabled = false;
+        viewPastReportsButton.disabled = false;
     }
 }
 
@@ -424,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     endPatrolButton.addEventListener('click', endPatrol);
     patrolSelect.addEventListener('change', updateCheckpointList);
     generateReportButton.addEventListener('click', generateReport);
-    document.getElementById('view-past-reports').addEventListener('click', viewPastReports);
+    viewPastReportsButton.addEventListener('click', viewPastReports);
 
     gapi.load('client', gapiLoaded);
     gisLoaded();
