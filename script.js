@@ -123,7 +123,7 @@ function register() {
     const name = registerName.value;
     const email = registerEmail.value;
     const password = registerPassword.value;
-
+    
     createUserWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
             return updateProfile(userCredential.user, {
@@ -148,7 +148,7 @@ function register() {
 function login() {
     const email = loginEmail.value;
     const password = loginPassword.value;
-
+    
     signInWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
             currentUser = userCredential.user.email;
@@ -193,7 +193,7 @@ function endPatrol() {
     duration.textContent = `${patrolDuration.toFixed(2)} minutes`;
     startPatrolButton.disabled = false;
     endPatrolButton.disabled = true;
-
+    
     const patrolData = {
         startTime: patrolStartTime.toISOString(),
         endTime: patrolEndTime.toISOString(),
