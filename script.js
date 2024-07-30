@@ -2,6 +2,15 @@ import { auth, database } from './firebase-config.js';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { ref, push, set, get, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 
+const CLIENT_ID = '198729776969-tn2k77s58prkukjpqg2221tsvnvljbmb.apps.googleusercontent.com';
+const API_KEY = 'AIzaSyBoyE1rRtmaMDgUYK7DZ5hoKBOJi81dCyM';
+const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+let tokenClient;
+let gapiInited = false;
+let gisInited = false;
+
 const authContainer = document.getElementById('auth-container');
 const patrolContainer = document.getElementById('patrol-container');
 const loginForm = document.getElementById('login-form');
@@ -64,6 +73,131 @@ const patrolMaps = {
     3: "patrol3-map.jpg"
 };
 
+function gapiLoaded() {
+    gapi.load('client', initializeGapiClient);
+}
+
+async function initializeGapiClient() {
+    await gapi.client.init({
+        apiKey: API_KEY,
+        discoveryDocs: [DISCOVERY_DOC],
+    });
+    gapiInited = true;
+    maybeEnableButtons();
+}
+
+function gisLoaded() {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        redirect_uri: 'https://sixface314.github.io/GIR-Security-Services-Inc/oauth2callback',
+        callback: '', // defined later
+    });
+    gisInited = true;
+    maybeEnableButtons();
+}
+
+function maybeEnableButtons() {
+    if (gapiInited && gisInited) {
+        generateReportButton.style.display = 'block';
+    }
+}
+
+function handleAuthClick() {
+    tokenClient.callback = async (resp) => {
+        if (resp.error !== undefined) {
+            throw (resp);
+        }
+        await uploadReport();
+    };
+
+    if (gapi.client.getToken() === null) {
+        tokenClient.requestAccessToken({prompt: 'consent'});
+    } else {
+        tokenClient.requestAccessToken({prompt: ''});
+    }
+}
+
+async function uploadReport() {
+    let reportContent = generateReportContent();
+    try {
+        const file = new Blob([reportContent], {type: 'text/html'});
+        const metadata = {
+            'name': `Patrol_Report_${new Date().toISOString()}.html`,
+            'mimeType': 'text/html',
+        };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+        form.append('file', file);
+
+        let response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: new Headers({'Authorization': 'Bearer ' + gapi.client.getToken().access_token}),
+            body: form,
+        });
+        let result = await response.json();
+        console.log('File uploaded successfully:', result);
+        alert('Report uploaded successfully to Google Drive');
+    } catch (err) {
+        console.error('Error uploading file:', err);
+        alert('Failed to upload report');
+    }
+}
+
+function generateReportContent() {
+    let reportContent = `
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid black; padding: 8px; text-align: left; }
+                .logo-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                .logo-container img { max-height: 50px; }
+            </style>
+        </head>
+        <body>
+            <div class="logo-container">
+                <img src="gir_security_logo.png" alt="GIR Security Services Inc. Logo">
+                <img src="casey_house_logo.png" alt="Casey House Logo">
+            </div>
+            <h2>Patrol Report</h2>
+            <p>Employee: ${currentUserName || currentUser}</p>
+            <p>Patrol: ${patrolTitle.textContent}</p>
+            <p>Start Time: ${startTime.textContent}</p>
+            <p>End Time: ${endTime.textContent}</p>
+            <p>Duration: ${duration.textContent}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Checkpoint</th>
+                        <th>Patrol Date</th>
+                        <th>Patrol Time</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    const rows = checkpointList.getElementsByTagName('tr');
+    for (let row of rows) {
+        reportContent += '<tr>';
+        for (let i = 0; i < 4; i++) {
+            reportContent += `<td>${row.cells[i].textContent}</td>`;
+        }
+        reportContent += '</tr>';
+    }
+
+    reportContent += `
+                </tbody>
+            </table>
+        </body>
+        </html>
+    `;
+
+    return reportContent;
+}
+
 function init() {
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -113,7 +247,7 @@ function register() {
     const name = registerName.value;
     const email = registerEmail.value;
     const password = registerPassword.value;
-    
+
     createUserWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
             return updateProfile(userCredential.user, {
@@ -138,7 +272,7 @@ function register() {
 function login() {
     const email = loginEmail.value;
     const password = loginPassword.value;
-    
+
     signInWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
             currentUser = userCredential.user.email;
@@ -183,7 +317,7 @@ function endPatrol() {
     duration.textContent = `${patrolDuration.toFixed(2)} minutes`;
     startPatrolButton.disabled = false;
     endPatrolButton.disabled = true;
-    
+
     const patrolData = {
         startTime: patrolStartTime.toISOString(),
         endTime: patrolEndTime.toISOString(),
@@ -195,7 +329,6 @@ function endPatrol() {
     };
     push(ref(database, 'patrols'), patrolData);
 }
-
 function getCheckpointData() {
     const checkpointData = [];
     const rows = checkpointList.getElementsByTagName('tr');
@@ -236,7 +369,6 @@ function updateCheckpointList() {
             resultCell.textContent = 'Checked';
             this.style.backgroundColor = 'green';
             this.disabled = true;
-            
             const checkpointData = {
                 checkpoint: checkpoint,
                 date: now.toISOString(),
@@ -252,26 +384,37 @@ function updateCheckpointList() {
 
 function generateReport() {
     let reportContent = `
-        <div class="logo-container" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-            <img src="gir_security_logo.png" alt="GIR Security Services Inc. Logo" style="max-height: 50px;">
-            <img src="casey_house_logo.png" alt="Casey House Logo" style="max-height: 50px;">
-        </div>
-        <h2>Patrol Report</h2>
-        <p>Employee: ${currentUserName || currentUser}</p>
-        <p>Patrol: ${patrolTitle.textContent}</p>
-        <p>Start Time: ${startTime.textContent}</p>
-        <p>End Time: ${endTime.textContent}</p>
-        <p>Duration: ${duration.textContent}</p>
-        <table border="1">
-            <thead>
-                <tr>
-                    <th>Checkpoint</th>
-                    <th>Patrol Date</th>
-                    <th>Patrol Time</th>
-                    <th>Result</th>
-                </tr>
-            </thead>
-            <tbody>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid black; padding: 8px; text-align: left; }
+                .logo-container { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                .logo-container img { max-height: 50px; }
+            </style>
+        </head>
+        <body>
+            <div class="logo-container">
+                <img src="gir_security_logo.png" alt="GIR Security Services Inc. Logo">
+                <img src="casey_house_logo.png" alt="Casey House Logo">
+            </div>
+            <h2>Patrol Report</h2>
+            <p>Employee: ${currentUserName || currentUser}</p>
+            <p>Patrol: ${patrolTitle.textContent}</p>
+            <p>Start Time: ${startTime.textContent}</p>
+            <p>End Time: ${endTime.textContent}</p>
+            <p>Duration: ${duration.textContent}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Checkpoint</th>
+                        <th>Patrol Date</th>
+                        <th>Patrol Time</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
     `;
 
     const rows = checkpointList.getElementsByTagName('tr');
@@ -284,148 +427,24 @@ function generateReport() {
     }
 
     reportContent += `
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </body>
+        </html>
     `;
 
-    const reportWindow = window.open('', '_blank');
-    reportWindow.document.write(`
-        <html>
-            <head>
-                <title>Patrol Report</title>
-                <style>
-                    body { font-family: Arial, sans-serif; }
-                    table { border-collapse: collapse; width: 100%; }
-                    th, td { border: 1px solid black; padding: 8px; text-align: left; }
-                    .logo-container {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 20px;
-                    }
-                    .logo-container img {
-                        max-height: 50px;
-                    }
-                </style>
-            </head>
-            <body>
-                ${reportContent}
-                <button onclick="window.print()">Print Report</button>
-            </body>
-        </html>
-    `);
-
-    // Store the report in the database
-    const reportData = {
-        employee: currentUserName || currentUser,
-        patrol: patrolTitle.textContent,
-        startTime: startTime.textContent,
-        endTime: endTime.textContent,
-        duration: duration.textContent,
-        checkpoints: getCheckpointData(),
-        date: new Date().toISOString()
-    };
-    push(ref(database, 'reports'), reportData);
+    uploadReport(reportContent);
 }
 
-function viewPastReports() {
-    const reportsQuery = query(ref(database, 'reports'), orderByChild('employee'), equalTo(currentUserName || currentUser));
-    get(reportsQuery).then((snapshot) => {
-        if (snapshot.exists()) {
-            displayReports(snapshot.val());
-        } else {
-            alert('No past reports found.');
-        }
-    }).catch((error) => {
-        console.error('Error fetching reports:', error);
-    });
-}
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('login-button').addEventListener('click', login);
+    logoutButton.addEventListener('click', logout);
+    startPatrolButton.addEventListener('click', startPatrol);
+    endPatrolButton.addEventListener('click', endPatrol);
+    patrolSelect.addEventListener('change', updateCheckpointList);
+    generateReportButton.addEventListener('click', handleAuthClick);
 
-function viewAllReports() {
-    if (!isAdmin) {
-        alert('You do not have permission to view all reports.');
-        return;
-    }
-    get(ref(database, 'reports')).then((snapshot) => {
-        if (snapshot.exists()) {
-            displayReports(snapshot.val());
-        } else {
-            alert('No reports found.');
-        }
-    }).catch((error) => {
-        console.error('Error fetching reports:', error);
-    });
-}
-
-function displayReports(reports) {
-    let reportContent = '<h2>Past Reports</h2>';
-    for (let key in reports) {
-        const report = reports[key];
-        reportContent += `
-            <div class="report">
-                <h3>Report from ${new Date(report.date).toLocaleString()}</h3>
-                <p>Employee: ${report.employee}</p>
-                <p>Patrol: ${report.patrol}</p>
-                <p>Start Time: ${report.startTime}</p>
-                <p>End Time: ${report.endTime}</p>
-                <p>Duration: ${report.duration}</p>
-                <table border="1">
-                    <thead>
-                        <tr>
-                            <th>Checkpoint</th>
-                            <th>Patrol Date</th>
-                            <th>Patrol Time</th>
-                            <th>Result</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-        report.checkpoints.forEach(checkpoint => {
-            reportContent += `
-                <tr>
-                    <td>${checkpoint.checkpoint}</td>
-                    <td>${checkpoint.date}</td>
-                    <td>${checkpoint.time}</td>
-                    <td>${checkpoint.result}</td>
-                </tr>
-            `;
-        });
-        reportContent += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-    }
-    const reportWindow = window.open('', '_blank');
-    reportWindow.document.write(`
-        <html>
-            <head>
-                <title>Past Reports</title>
-                <style>
-                    body { font-family: Arial, sans-serif; }
-                    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-                    th, td { border: 1px solid black; padding: 8px; text-align: left; }
-                    .report { margin-bottom: 40px; border-bottom: 1px solid #ccc; padding-bottom: 20px; }
-                </style>
-            </head>
-            <body>
-                ${reportContent}
-                <button onclick="window.print()">Print Reports</button>
-            </body>
-        </html>
-    `);
-}
-
-init();
-
-document.getElementById('login-button').addEventListener('click', login);
-document.getElementById('register-button').addEventListener('click', register);
-logoutButton.addEventListener('click', logout);
-toggleAuth.addEventListener('click', toggleAuthForm);
-startPatrolButton.addEventListener('click', startPatrol);
-endPatrolButton.addEventListener('click', endPatrol);
-patrolSelect.addEventListener('change', updateCheckpointList);
-generateReportButton.addEventListener('click', generateReport);
-document.getElementById('view-past-reports').addEventListener('click', viewPastReports);
-document.getElementById('view-all-reports').addEventListener('click', viewAllReports);
-
+    gapi.load('client', gapiLoaded);
+    gisLoaded();
+    init();
+});
