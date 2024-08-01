@@ -1,7 +1,9 @@
 import { auth, database } from './firebase-config.js';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-import { ref, push, set, get, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+import { ref, push, set, get } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+import { Html5Qrcode } from "https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js";
 
+// Google API client ID, API key, and discovery doc
 const CLIENT_ID = '198729776969-tn2k77s58prkukjpqg2221tsvnvljbmb.apps.googleusercontent.com';
 const API_KEY = 'AIzaSyBoyE1rRtmaMDgUYK7DZ5hoKBOJi81dCyM';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
@@ -16,7 +18,6 @@ const patrolContainer = document.getElementById('patrol-container');
 const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
 const authToggle = document.getElementById('auth-toggle');
-const toggleAuth = document.getElementById('toggle-auth');
 const loginEmail = document.getElementById('login-email');
 const loginPassword = document.getElementById('login-password');
 const registerName = document.getElementById('register-name');
@@ -35,6 +36,7 @@ const endTime = document.getElementById('end-time');
 const duration = document.getElementById('duration');
 const checkpointList = document.getElementById('checkpoint-list');
 const patrolMap = document.getElementById('patrol-map');
+const qrReaderElement = document.getElementById('qr-reader');
 
 let currentUser = null;
 let currentUserName = null;
@@ -205,6 +207,34 @@ function endPatrol() {
     };
     push(ref(database, 'patrols'), patrolData);
 }
+
+function getCheckpointData() {
+    const rows = checkpointList.getElementsByTagName('tr');
+    return Array.from(rows).map(row => {
+        const cells = row.getElementsByTagName('td');
+        return {
+            checkpoint: cells[0].textContent,
+            patrolDate: cells[1].textContent,
+            patrolTime: cells[2].textContent,
+            result: cells[3].textContent
+        };
+    });
+}
+
+function updateCheckpointList() {
+    const selectedPatrol = parseInt(patrolSelect.value, 10);
+    const checkpointArray = checkpoints[selectedPatrol];
+    checkpointList.innerHTML = checkpointArray.map(checkpoint => `
+        <tr>
+            <td>${checkpoint}</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+        </tr>
+    `).join('');
+    patrolMap.src = patrolMaps[selectedPatrol];
+}
+
 function generateReportContent() {
     let reportContent = `
         <html>
@@ -269,23 +299,37 @@ function printReport() {
 
 function generateReport() {
     printReport();
-    uploadReport();
+    uploadReportToDrive();
 }
 
-async function uploadReport() {
-    let reportContent = generateReportContent();
+async function uploadReportToDrive() {
+    const reportContent = generateReportContent();
+    const fileContent = new Blob([reportContent], { type: 'text/html' });
+    const metadata = {
+        name: 'Patrol Report',
+        mimeType: 'text/html'
+    };
+    const accessToken = gapi.auth.getToken().access_token;
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', fileContent);
+
     try {
-        const reportRef = push(ref(database, 'reports'));
-        await set(reportRef, {
-            content: reportContent,
-            timestamp: new Date().toISOString(),
-            user: currentUser,
-            userName: currentUserName
+        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+            body: form,
         });
-        console.log('Report uploaded successfully to Firebase');
+
+        if (!response.ok) {
+            throw new Error(`Error uploading file: ${response.statusText}`);
+        }
+
+        const file = await response.json();
+        console.log('File uploaded to Google Drive:', file);
         alert('Report uploaded successfully');
     } catch (err) {
-        console.error('Error uploading report:', err);
+        console.error('Error uploading report to Google Drive:', err);
         alert('Failed to upload report');
     }
 }
@@ -364,6 +408,7 @@ function displayReport(reportContent) {
     viewerWindow.document.close();
 }
 
+// Google API initialization
 function gapiLoaded() {
     gapi.load('client', initializeGapiClient);
 }
@@ -394,6 +439,41 @@ function maybeEnableButtons() {
     }
 }
 
+function handleAuthClick() {
+    tokenClient.callback = async (response) => {
+        if (response.error) {
+            console.error('Error obtaining OAuth token:', response.error);
+            alert('Failed to authenticate with Google Drive.');
+            return;
+        }
+        console.log('OAuth token obtained');
+    };
+
+    if (gapi.client.getToken() === null) {
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+        tokenClient.requestAccessToken({ prompt: '' });
+    }
+}
+
+function startQRCodeScan() {
+    const html5QrCode = new Html5Qrcode("qr-reader");
+    const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+        console.log(`QR Code detected: ${decodedText}`);
+        alert(`QR Code detected: ${decodedText}`);
+        html5QrCode.stop();
+    };
+
+    html5QrCode.start({ facingMode: "environment" }, {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+    }, qrCodeSuccessCallback)
+    .catch(err => {
+        console.error(`Error starting QR code scan: ${err}`);
+        alert('Failed to access camera for QR code scanning.');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-button').addEventListener('click', login);
     logoutButton.addEventListener('click', logout);
@@ -402,6 +482,7 @@ document.addEventListener('DOMContentLoaded', () => {
     patrolSelect.addEventListener('change', updateCheckpointList);
     generateReportButton.addEventListener('click', generateReport);
     viewPastReportsButton.addEventListener('click', viewPastReports);
+    document.getElementById('start-qr-scan').addEventListener('click', startQRCodeScan);
 
     gapi.load('client', gapiLoaded);
     gisLoaded();
