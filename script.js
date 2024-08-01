@@ -123,7 +123,7 @@ function register() {
     const name = registerName.value;
     const email = registerEmail.value;
     const password = registerPassword.value;
-    
+
     createUserWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
             return updateProfile(userCredential.user, {
@@ -148,7 +148,7 @@ function register() {
 function login() {
     const email = loginEmail.value;
     const password = loginPassword.value;
-    
+
     signInWithEmailAndPassword(auth, email, password)
         .then((userCredential) => {
             currentUser = userCredential.user.email;
@@ -193,7 +193,7 @@ function endPatrol() {
     duration.textContent = `${patrolDuration.toFixed(2)} minutes`;
     startPatrolButton.disabled = false;
     endPatrolButton.disabled = true;
-    
+
     const patrolData = {
         startTime: patrolStartTime.toISOString(),
         endTime: patrolEndTime.toISOString(),
@@ -205,59 +205,6 @@ function endPatrol() {
     };
     push(ref(database, 'patrols'), patrolData);
 }
-function getCheckpointData() {
-    const checkpointData = [];
-    const rows = checkpointList.getElementsByTagName('tr');
-    for (let row of rows) {
-        checkpointData.push({
-            checkpoint: row.cells[0].textContent,
-            date: row.cells[1].textContent,
-            time: row.cells[2].textContent,
-            result: row.cells[3].textContent
-        });
-    }
-    return checkpointData;
-}
-
-function updateCheckpointList() {
-    const selectedPatrol = patrolSelect.value;
-    patrolTitle.textContent = `Patrol #${selectedPatrol}`;
-    checkpointList.innerHTML = '';
-    patrolMap.src = patrolMaps[selectedPatrol];
-    checkpoints[selectedPatrol].forEach((checkpoint, index) => {
-        const row = checkpointList.insertRow();
-        row.insertCell(0).textContent = checkpoint;
-        const dateCell = row.insertCell(1);
-        dateCell.textContent = '-';
-        const timeCell = row.insertCell(2);
-        timeCell.textContent = '-';
-        const resultCell = row.insertCell(3);
-        resultCell.textContent = 'Pending';
-        const actionCell = row.insertCell(4);
-        const checkButton = document.createElement('button');
-        checkButton.textContent = 'Check';
-        checkButton.style.backgroundColor = 'red';
-        checkButton.style.color = 'white';
-        checkButton.onclick = function() {
-            const now = new Date();
-            dateCell.textContent = now.toLocaleDateString();
-            timeCell.textContent = now.toLocaleTimeString();
-            resultCell.textContent = 'Checked';
-            this.style.backgroundColor = 'green';
-            this.disabled = true;
-            const checkpointData = {
-                checkpoint: checkpoint,
-                date: now.toISOString(),
-                user: currentUser,
-                userName: currentUserName,
-                patrolNumber: selectedPatrol
-            };
-            push(ref(database, 'checkpoints'), checkpointData);
-        };
-        actionCell.appendChild(checkButton);
-    });
-}
-
 function generateReportContent() {
     let reportContent = `
         <html>
@@ -321,81 +268,100 @@ function printReport() {
 }
 
 function generateReport() {
-    if (!gapiInited || !gisInited) {
-        alert('Google API not initialized. Please try again in a moment.');
-        return;
-    }
-
     printReport();
-
-    tokenClient.callback = async (resp) => {
-        if (resp.error !== undefined) {
-            throw (resp);
-        }
-        await uploadReport();
-    };
-
-    if (gapi.client.getToken() === null) {
-        tokenClient.requestAccessToken({prompt: 'consent'});
-    } else {
-        tokenClient.requestAccessToken({prompt: ''});
-    }
+    uploadReport();
 }
 
 async function uploadReport() {
     let reportContent = generateReportContent();
     try {
-        const file = new Blob([reportContent], {type: 'text/html'});
-        const metadata = {
-            'name': `Patrol_Report_${new Date().toISOString()}.html`,
-            'mimeType': 'text/html',
-        };
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-        form.append('file', file);
-
-        let response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-            method: 'POST',
-            headers: new Headers({'Authorization': 'Bearer ' + gapi.client.getToken().access_token}),
-            body: form,
+        const reportRef = push(ref(database, 'reports'));
+        await set(reportRef, {
+            content: reportContent,
+            timestamp: new Date().toISOString(),
+            user: currentUser,
+            userName: currentUserName
         });
-        let result = await response.json();
-        console.log('File uploaded successfully:', result);
-        alert('Report uploaded successfully to Google Drive');
+        console.log('Report uploaded successfully to Firebase');
+        alert('Report uploaded successfully');
     } catch (err) {
-        console.error('Error uploading file:', err);
+        console.error('Error uploading report:', err);
         alert('Failed to upload report');
     }
 }
 
 async function viewPastReports() {
-    if (!gapiInited || !gisInited) {
-        alert('Google API not initialized. Please try again in a moment.');
-        return;
-    }
-
     try {
-        const response = await gapi.client.drive.files.list({
-            'pageSize': 10,
-            'fields': 'files(id, name, webViewLink)',
-            'q': "mimeType='text/html' and name contains 'Patrol_Report'"
-        });
+        const reportsRef = ref(database, 'reports');
+        const reportsSnapshot = await get(reportsRef);
         
-        const files = response.result.files;
-        if (files && files.length > 0) {
-            let fileList = 'Past Reports:\n';
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                fileList += `${i + 1}. ${file.name}: ${file.webViewLink}\n`;
-            }
-            alert(fileList);
+        if (reportsSnapshot.exists()) {
+            const reports = [];
+            reportsSnapshot.forEach((childSnapshot) => {
+                reports.push({
+                    id: childSnapshot.key,
+                    ...childSnapshot.val()
+                });
+            });
+            
+            // Sort reports by timestamp, most recent first
+            reports.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            // Create a modal to display the report list
+            const modal = document.createElement('div');
+            modal.style.position = 'fixed';
+            modal.style.left = '0';
+            modal.style.top = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+            modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            modal.style.display = 'flex';
+            modal.style.justifyContent = 'center';
+            modal.style.alignItems = 'center';
+
+            const modalContent = document.createElement('div');
+            modalContent.style.backgroundColor = 'white';
+            modalContent.style.padding = '20px';
+            modalContent.style.borderRadius = '5px';
+            modalContent.style.maxWidth = '80%';
+            modalContent.style.maxHeight = '80%';
+            modalContent.style.overflow = 'auto';
+
+            const closeButton = document.createElement('button');
+            closeButton.textContent = 'Close';
+            closeButton.onclick = () => document.body.removeChild(modal);
+
+            const reportList = document.createElement('ul');
+            reports.forEach((report) => {
+                const listItem = document.createElement('li');
+                const reportLink = document.createElement('a');
+                reportLink.href = '#';
+                reportLink.textContent = `Report from ${new Date(report.timestamp).toLocaleString()}`;
+                reportLink.onclick = (e) => {
+                    e.preventDefault();
+                    displayReport(report.content);
+                };
+                listItem.appendChild(reportLink);
+                reportList.appendChild(listItem);
+            });
+
+            modalContent.appendChild(reportList);
+            modalContent.appendChild(closeButton);
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
         } else {
             alert('No reports found.');
         }
     } catch (err) {
-        console.error('Error listing files:', err);
+        console.error('Error retrieving reports:', err);
         alert('Failed to retrieve past reports');
     }
+}
+
+function displayReport(reportContent) {
+    const viewerWindow = window.open('', '_blank');
+    viewerWindow.document.write(reportContent);
+    viewerWindow.document.close();
 }
 
 function gapiLoaded() {
