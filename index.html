@@ -7,74 +7,64 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="app">
+    <div class="container">
         <div class="logo-container">
             <img src="gir_security_logo.png" alt="GIR Security Services Inc. Logo" class="company-logo">
             <img src="casey_house_logo.png" alt="Casey House Logo" class="client-logo">
         </div>
+        <h1>Patrol Log</h1>
         <div id="auth-container">
-            <h2>GIR Security Services Inc.</h2>
             <div id="login-form">
-                <input type="email" id="login-email" placeholder="Email" required>
+                <input type="text" id="login-username" placeholder="Username" required>
                 <input type="password" id="login-password" placeholder="Password" required>
                 <button id="login-button">Login</button>
             </div>
-            <div id="register-form" style="display:none;">
-                <input type="text" id="register-name" placeholder="Full Name" required>
-                <input type="email" id="register-email" placeholder="Email" required>
-                <input type="password" id="register-password" placeholder="Password" required>
-                <button id="register-button">Register</button>
-            </div>
-            <p id="auth-toggle">Don't have an account? <a href="#" id="toggle-auth">Register</a></p>
+            <p>Don't have an account? <a href="#" id="toggle-auth">Register</a></p>
         </div>
-        <div id="patrol-container" style="display:none;">
-            <h2>Welcome, <span id="user-name"></span></h2>
+        <div id="patrol-container" style="display: none;">
+            <p>Welcome, <span id="user-name"></span>!</p>
             <button id="logout-button">Logout</button>
-            <div id="patrol-controls">
+            <div class="patrol-controls">
                 <select id="patrol-select">
-                    <option value="1">Patrol #1</option>
-                    <option value="2">Patrol #2</option>
-                    <option value="3">Patrol #3</option>
+                    <option value="1">Patrol 1</option>
+                    <option value="2">Patrol 2</option>
+                    <option value="3">Patrol 3</option>
                 </select>
                 <button id="start-patrol">Start Patrol</button>
                 <button id="end-patrol" disabled>End Patrol</button>
-                <button id="generate-report">Generate Report</button>
-                <button id="view-past-reports">View Past Reports</button>
             </div>
-            <div id="patrol-info">
-                <h3 id="patrol-title"></h3>
+            <div class="patrol-details">
+                <h2 id="patrol-title">Patrol #1</h2>
                 <p>Start Time: <span id="start-time">-</span></p>
                 <p>End Time: <span id="end-time">-</span></p>
                 <p>Duration: <span id="duration">-</span></p>
             </div>
-            <div id="patrol-map-container">
-                <img id="patrol-map" src="" alt="Patrol Map">
+            <div class="patrol-content">
+                <div class="map-container">
+                    <img id="patrol-map" src="patrol1-map.jpg" alt="Patrol Map">
+                </div>
+                <div class="checkpoint-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Checkpoint</th>
+                                <th>Patrol Date</th>
+                                <th>Patrol Time</th>
+                                <th>Result</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="checkpoint-list"></tbody>
+                    </table>
+                </div>
             </div>
-            <table id="checkpoint-table">
-                <thead>
-                    <tr>
-                        <th>Checkpoint</th>
-                        <th>Patrol Date</th>
-                        <th>Patrol Time</th>
-                        <th>Result</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="checkpoint-list"></tbody>
-            </table>
-        </div>
-        <div id="admin-panel" style="display:none;">
-            <h2>Admin Panel</h2>
-            <button id="view-all-reports">View All Reports</button>
+            <div class="export-options">
+                <button id="generate-report">Generate and Upload Report</button>
+            </div>
         </div>
     </div>
-
-    <!-- Google API Scripts -->
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-    <!-- Firebase and custom scripts -->
-    <script type="module" src="firebase-config.js"></script>
-    <script type="module" src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
