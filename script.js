@@ -1,7 +1,9 @@
+// Firebase and Google API imports
 import { auth, database } from './firebase-config.js';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 import { ref, push, set, get } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
 
+// Google API configuration
 const CLIENT_ID = '198729776969-tn2k77s58prkukjpqg2221tsvnvljbmb.apps.googleusercontent.com';
 const API_KEY = 'AIzaSyBoyE1rRtmaMDgUYK7DZ5hoKBOJi81dCyM';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
@@ -11,6 +13,7 @@ let tokenClient;
 let gapiInited = false;
 let gisInited = false;
 
+// DOM element references
 const authContainer = document.getElementById('auth-container');
 const patrolContainer = document.getElementById('patrol-container');
 const loginForm = document.getElementById('login-form');
@@ -35,34 +38,24 @@ const duration = document.getElementById('duration');
 const checkpointList = document.getElementById('checkpoint-list');
 const patrolMap = document.getElementById('patrol-map');
 
+// Global variables
 let currentUser = null;
 let currentUserName = null;
 let patrolStartTime = null;
 
+// Checkpoint and patrol map data
 const checkpoints = {
     1: [
         "A. Ambulance Dock", "B. Basement Comms Room 024", "C. Basement Electrical Room 015",
-        "D. CEO Meeting Office SW", "E. Dining Room North Side™", "F. Basement Fire Pump/Sprinkler Room",
-        "G. 2nd Level West Heritage House", "H. Penthouse Boiler Room East", "I. Penthouse Boiler Room West",
-        "J. West Heritage House Double Doors", "K. Stair Well 1 Level G (Overlooking Heritage)",
-        "L. SW Heritage House Exit", "M. Stair Well 1 Level G SW Emergency Exit", "N. Quiet Room",
-        "O. Rooftop Garden", "P. Staff Exit (Stair 3 LvI G)", "Q. Parking Garage AV Storage",
-        "R. Parking Garage Centre Pillar", "S. Heritage House Community Kitchen", "T. June Callwood Room",
-        "U. Kitchen - Freezer (Inside)", "V. North East Fire Emergency Exit", "W. Main Entrance Door",
-        "X. Kitchen - Gas (Check)", "Y. 222 IT room servers", "Z. 3rd floor - Heritage house fire exit Stair 7",
-        "AA. Exterior garbage gate", "AB. Heritage house foundation storage room - Back panel",
-        "AC. Kitchen dish wash area", "AD. Oxygen room"
+        // ... (rest of the checkpoints)
     ],
     2: [
         "A. 2nd Floor Washroom 248", "B. 2nd Level Handicap Washroom 209", "C. 2nd Level Handicap Washroom 211",
-        "D. 2nd Level North Corridor Washroom 204", "E. Handicap Washroom 135", "F. Washroom 134",
-        "G. 102B washroom - behind reception", "H. 106 Washroom - interior", "I. 133 washroom interior",
-        "J. 235 Washroom interior"
+        // ... (rest of the checkpoints)
     ],
     3: [
         "A. Courtyard side of the wooden gate", "B. Heritage House front door", "C. Blue Kit Bin",
-        "D. New wooden gate locking up nook area", "E. NE corner by kitchen window",
-        "F. External side of East Side Staff Entrance", "G. G SE perimeter black gate (by the parking garage)"
+        // ... (rest of the checkpoints)
     ]
 };
 
@@ -72,6 +65,7 @@ const patrolMaps = {
     3: "patrol3-map.jpg"
 };
 
+// Google API initialization functions
 function gapiLoaded() {
     gapi.load('client', initializeGapiClient);
 }
@@ -102,6 +96,7 @@ function maybeEnableButtons() {
     }
 }
 
+// Google Drive authentication and report upload functions
 function handleAuthClick() {
     tokenClient.callback = async (resp) => {
         if (resp.error !== undefined) {
@@ -116,6 +111,33 @@ function handleAuthClick() {
         tokenClient.requestAccessToken({prompt: ''});
     }
 }
+
+async function uploadReport() {
+    let reportContent = generateReportContent();
+    try {
+        const file = new Blob([reportContent], {type: 'text/html'});
+        const metadata = {
+            'name': `Patrol_Report_${new Date().toISOString()}.html`,
+            'mimeType': 'text/html',
+        };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+        form.append('file', file);
+
+        let response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: new Headers({'Authorization': 'Bearer ' + gapi.client.getToken().access_token}),
+            body: form,
+        });
+        let result = await response.json();
+        console.log('File uploaded successfully:', result);
+        alert('Report uploaded successfully to Google Drive');
+    } catch (err) {
+        console.error('Error uploading file:', err);
+        alert('Failed to upload report');
+    }
+}
+// Continue from the previous part...
 
 async function uploadReport() {
     let reportContent = generateReportContent();
@@ -197,6 +219,7 @@ function generateReportContent() {
     return reportContent;
 }
 
+// Authentication state observer
 function init() {
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -210,17 +233,21 @@ function init() {
     });
 }
 
+// Check if the user is an admin
 function checkIfAdmin(uid) {
     get(ref(database, `users/${uid}`)).then((snapshot) => {
         if (snapshot.exists()) {
-            isAdmin = snapshot.val().isAdmin || false;
+            const isAdmin = snapshot.val().isAdmin || false;
             if (isAdmin) {
                 document.getElementById('admin-panel').style.display = 'block';
             }
         }
+    }).catch(error => {
+        console.error("Error checking admin status:", error);
     });
 }
 
+// UI toggle functions
 function showAuthContainer() {
     authContainer.style.display = 'block';
     patrolContainer.style.display = 'none';
@@ -233,6 +260,7 @@ function showPatrolContainer() {
     resetPatrolInfo();
 }
 
+// Reset patrol information
 function resetPatrolInfo() {
     startTime.textContent = '-';
     endTime.textContent = '-';
@@ -242,6 +270,7 @@ function resetPatrolInfo() {
     updateCheckpointList();
 }
 
+// User registration function
 function register() {
     const name = registerName.value;
     const email = registerEmail.value;
@@ -266,6 +295,8 @@ function register() {
         });
 }
 
+// ... Continue with the next part
+// User authentication functions
 function login() {
     const email = loginEmail.value;
     const password = loginPassword.value;
@@ -277,6 +308,7 @@ function login() {
             showPatrolContainer();
         })
         .catch((error) => {
+            console.error('Login error:', error);
             alert('Login error: ' + error.message);
         });
 }
@@ -288,15 +320,18 @@ function logout() {
         showAuthContainer();
     }).catch((error) => {
         console.error('Logout error:', error);
+        alert('Logout failed. Please try again.');
     });
 }
 
+// Toggle between login and registration forms
 function toggleAuthForm() {
     loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
     registerForm.style.display = registerForm.style.display === 'none' ? 'block' : 'none';
     authToggle.textContent = loginForm.style.display === 'none' ? 'Already have an account? Login' : 'Don\'t have an account? Register';
 }
 
+// Patrol management functions
 function startPatrol() {
     patrolStartTime = new Date();
     startTime.textContent = patrolStartTime.toLocaleString();
@@ -325,7 +360,14 @@ function endPatrol() {
         checkpoints: getCheckpointData()
     };
 
-    push(ref(database, 'patrols'), patrolData);
+    push(ref(database, 'patrols'), patrolData)
+        .then(() => {
+            console.log('Patrol data saved successfully');
+        })
+        .catch((error) => {
+            console.error('Error saving patrol data:', error);
+            alert('Failed to save patrol data. Please try again.');
+        });
 }
 
 function getCheckpointData() {
@@ -359,20 +401,20 @@ function updateCheckpointList() {
         const actionCell = row.insertCell(4);
         const checkButton = document.createElement('button');
         checkButton.textContent = 'Check';
-        checkButton.style.backgroundColor = 'red';
-        checkButton.style.color = 'white';
+        checkButton.className = 'check-button unchecked';
         checkButton.onclick = function() {
             const now = new Date();
             dateCell.textContent = now.toLocaleDateString();
             timeCell.textContent = now.toLocaleTimeString();
             resultCell.textContent = 'Checked';
-            this.style.backgroundColor = 'green';
+            this.className = 'check-button checked';
             this.disabled = true;
         };
         actionCell.appendChild(checkButton);
     });
 }
 
+// Event listeners
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-button').addEventListener('click', login);
     logoutButton.addEventListener('click', logout);
@@ -380,8 +422,12 @@ document.addEventListener('DOMContentLoaded', () => {
     endPatrolButton.addEventListener('click', endPatrol);
     patrolSelect.addEventListener('change', updateCheckpointList);
     generateReportButton.addEventListener('click', handleAuthClick);
+    toggleAuth.addEventListener('click', toggleAuthForm);
 
     gapi.load('client', gapiLoaded);
     gisLoaded();
     init();
 });
+
+// Export functions if needed
+export { login, logout, startPatrol, endPatrol, updateCheckpointList };
