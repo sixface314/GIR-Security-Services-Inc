@@ -5,33 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GIR Security Services Inc. - Patrol Log</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <!-- Add your favicon file to the project directory -->
 </head>
 <body>
+    <noscript>
+        <p>This application requires JavaScript to function. Please enable JavaScript in your browser settings.</p>
+    </noscript>
+
     <div id="app">
+        <!-- Logo Container -->
         <div class="logo-container">
             <img src="gir_security_logo.png" alt="GIR Security Services Inc. Logo" class="company-logo">
             <img src="casey_house_logo.png" alt="Casey House Logo" class="client-logo">
         </div>
+
+        <!-- Authentication Container -->
         <div id="auth-container">
             <h2>GIR Security Services Inc.</h2>
             <div id="login-form">
-                <input type="email" id="login-email" placeholder="Email" required>
-                <input type="password" id="login-password" placeholder="Password" required>
+                <input type="email" id="login-email" placeholder="Email" required aria-label="Email">
+                <input type="password" id="login-password" placeholder="Password" required aria-label="Password">
                 <button id="login-button">Login</button>
             </div>
             <div id="register-form" style="display:none;">
-                <input type="text" id="register-name" placeholder="Full Name" required>
-                <input type="email" id="register-email" placeholder="Email" required>
-                <input type="password" id="register-password" placeholder="Password" required>
+                <input type="text" id="register-name" placeholder="Full Name" required aria-label="Full Name">
+                <input type="email" id="register-email" placeholder="Email" required aria-label="Email">
+                <input type="password" id="register-password" placeholder="Password" required aria-label="Password">
                 <button id="register-button">Register</button>
             </div>
             <p id="auth-toggle">Don't have an account? <a href="#" id="toggle-auth">Register</a></p>
         </div>
+
+        <!-- Patrol Container -->
         <div id="patrol-container" style="display:none;">
             <h2>Welcome, <span id="user-name"></span></h2>
             <button id="logout-button">Logout</button>
             <div id="patrol-controls">
-                <select id="patrol-select">
+                <select id="patrol-select" aria-label="Select Patrol">
                     <option value="1">Patrol #1</option>
                     <option value="2">Patrol #2</option>
                     <option value="3">Patrol #3</option>
@@ -63,17 +74,19 @@
                 <tbody id="checkpoint-list"></tbody>
             </table>
         </div>
+
+        <!-- Admin Panel -->
         <div id="admin-panel" style="display:none;">
             <h2>Admin Panel</h2>
             <button id="view-all-reports">View All Reports</button>
         </div>
     </div>
 
-    <!-- Add these two script tags for Google API -->
+    <!-- Google API Scripts -->
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-    <!-- Your existing scripts -->
+    <!-- Application Scripts -->
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="script.js"></script>
 </body>
